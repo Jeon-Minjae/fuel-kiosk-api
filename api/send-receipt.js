@@ -1,82 +1,76 @@
 const twilio = require('twilio');
 
-module.exports = async (req, res) => {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+// These environment variables must be set in Vercel's settings
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
+// Initialize the Twilio client
+const client = twilio(accountSid, authToken);
+
+module.exports = async (req, res) => {
+    
+    // Set CORS headers for the frontend (done early to catch OPTIONS requests)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Handle preflight OPTIONS request for CORS explicitly
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
 
+    // Allow only POST requests
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        res.status(405).send('Method Not Allowed');
+        return;
     }
 
     try {
-        const {
-            to,
-            amount,
-            litres,
-            fuelType,
-            pricePerLitre,
-            serviceType,
-            paymentMethod,
-            transactionId
-        } = req.body;
+        // --- CHANGE 1: Destructure variables to match frontend payload ---
+        const { to, amount, fuelType, pumpNumber } = req.body; // Frontend sends 'to', 'amount', 'fuelType', 'pumpNumber'
 
-        if (!to || !amount || !litres || !fuelType) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        // --- CHANGE 2: Check for required fields based on new names ---
+        if (!to || !amount || !fuelType) {
+            return res.status(400).json({ success: false, message: 'Missing required fields.' });
         }
 
-        // Create receipt message - COMPLETELY WITHOUT PUMP INFORMATION
-        let receiptMessage = `*Fuel Receipt*\n`;
-        receiptMessage += `---\n`;
-        receiptMessage += `*Pump Station*: Petronas KL\n`;
-        receiptMessage += `*Date*: ${new Date().toLocaleDateString('en-GB')}\n`;
-        receiptMessage += `*Time*: ${new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' })}\n`;
-        receiptMessage += `*Fuel Type*: ${fuelType}\n`;
-        receiptMessage += `*Total Paid*: *RM ${amount}*\n`;
-        receiptMessage += `*Litres*: ${litres}L\n`;
-        receiptMessage += `*Price/Litre*: RM${pricePerLitre}\n`;
-        receiptMessage += `*Payment Method*: ${paymentMethod}\n`;
-        receiptMessage += `*Service Type*: ${serviceType}\n`;
-        // NO PUMP NUMBER LINE HERE - COMPLETELY REMOVED
-        receiptMessage += `---\n`;
-        receiptMessage += `*Transaction ID*: ${transactionId}\n`;
-        receiptMessage += `\n_Thank you for your purchase!_\n`;
+        // Note: 'to' is already in whatsapp:+60... format from the frontend.
 
-        console.log('Receipt message (no pump):', receiptMessage);
+        // --- CHANGE 3: Construct the message body with new variables ---
+        const messageBody = `⛽ *Fuel Receipt*\n---
+\n*Pump Station*: Petronas KL
+\n*Date*: ${new Date().toLocaleDateString('en-MY')}
+\n*Time*: ${new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}
+\n*Fuel Type*: ${fuelType}
+\n*Total Paid*: *RM ${amount}*
+\n*Pump Assigned*: ${pumpNumber}
+\n---
+\n_Thank you for your purchase!_`;
 
-        // Initialize Twilio client
-        const accountSid = process.env.TWILIO_ACCOUNT_SID;
-        const authToken = process.env.TWILIO_AUTH_TOKEN;
-        const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
-        
-        const client = twilio(accountSid, authToken);
-
-        // Send WhatsApp message
+        // Send the WhatsApp message via Twilio
         const message = await client.messages.create({
-            from: `whatsapp:${twilioPhone}`,
-            to: to,
-            body: receiptMessage
+            to: to, // Use the 'to' field directly
+            from: twilioWhatsAppNumber, // Twilio Sandbox number
+            body: messageBody,
         });
 
-        console.log('Receipt sent successfully:', message.sid);
-        return res.status(200).json({ 
+        // Respond to the kiosk frontend
+        res.status(200).json({ 
             success: true, 
-            messageId: message.sid,
-            message: 'Receipt sent successfully' 
+            message: 'Receipt sent successfully!', 
+            twilioSid: message.sid 
         });
 
     } catch (error) {
-        console.error('Error sending receipt:', error);
-        return res.status(500).json({ 
-            error: 'Failed to send receipt', 
-            details: error.message 
+        console.error('Twilio Error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to send receipt.', 
+            error: error.message 
         });
     }
 };
+ 
+
