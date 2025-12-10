@@ -25,58 +25,37 @@ module.exports = async (req, res) => {
             pricePerLitre,
             serviceType,
             paymentMethod,
-            pumpNumber, // This might be undefined if not provided
             transactionId
         } = req.body;
 
-        // Validation
-        if (!to || !amount || !litres || !fuelType || !paymentMethod || !serviceType) {
-            return res.status(400).json({ 
-                error: 'Missing required fields',
-                required: ['to', 'amount', 'litres', 'fuelType', 'paymentMethod', 'serviceType']
-            });
+        if (!to || !amount || !litres || !fuelType) {
+            return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Create receipt message WITHOUT pump information if not provided
+        // Create receipt message - COMPLETELY WITHOUT PUMP INFORMATION
         let receiptMessage = `*Fuel Receipt*\n`;
         receiptMessage += `---\n`;
         receiptMessage += `*Pump Station*: Petronas KL\n`;
         receiptMessage += `*Date*: ${new Date().toLocaleDateString('en-GB')}\n`;
         receiptMessage += `*Time*: ${new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' })}\n`;
         receiptMessage += `*Fuel Type*: ${fuelType}\n`;
-        receiptMessage += `*Total Paid*: *RM ${parseFloat(amount).toFixed(2)}*\n`;
-        receiptMessage += `*Litres*: ${parseFloat(litres).toFixed(2)}L\n`;
-        receiptMessage += `*Price/Litre*: RM${parseFloat(pricePerLitre).toFixed(2)}\n`;
+        receiptMessage += `*Total Paid*: *RM ${amount}*\n`;
+        receiptMessage += `*Litres*: ${litres}L\n`;
+        receiptMessage += `*Price/Litre*: RM${pricePerLitre}\n`;
         receiptMessage += `*Payment Method*: ${paymentMethod}\n`;
         receiptMessage += `*Service Type*: ${serviceType}\n`;
-        
-        // Only include pump if provided and valid (not 0 or empty)
-        if (pumpNumber && pumpNumber !== "0" && pumpNumber !== "") {
-            receiptMessage += `*Pump Number*: ${pumpNumber}\n`;
-        }
-        
+        // NO PUMP NUMBER LINE HERE - COMPLETELY REMOVED
         receiptMessage += `---\n`;
-        receiptMessage += `*Transaction ID*: ${transactionId || `TX-${Date.now()}`}\n`;
+        receiptMessage += `*Transaction ID*: ${transactionId}\n`;
         receiptMessage += `\n_Thank you for your purchase!_\n`;
 
-        // Log receipt data (for debugging)
-        console.log('Sending receipt to:', to);
-        console.log('Receipt message preview:', receiptMessage.substring(0, 100) + '...');
+        console.log('Receipt message (no pump):', receiptMessage);
 
         // Initialize Twilio client
         const accountSid = process.env.TWILIO_ACCOUNT_SID;
         const authToken = process.env.TWILIO_AUTH_TOKEN;
         const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
         
-        // Check if Twilio credentials are set
-        if (!accountSid || !authToken || !twilioPhone) {
-            console.error('Twilio credentials missing');
-            return res.status(500).json({ 
-                error: 'Server configuration error',
-                message: 'Twilio credentials not configured'
-            });
-        }
-
         const client = twilio(accountSid, authToken);
 
         // Send WhatsApp message
@@ -95,28 +74,9 @@ module.exports = async (req, res) => {
 
     } catch (error) {
         console.error('Error sending receipt:', error);
-        
-        // Provide more specific error messages
-        let errorMessage = 'Failed to send receipt';
-        let statusCode = 500;
-        
-        if (error.code === 21211) {
-            errorMessage = 'Invalid phone number format';
-            statusCode = 400;
-        } else if (error.code === 21608) {
-            errorMessage = 'WhatsApp not enabled for this number';
-            statusCode = 400;
-        } else if (error.code === 20003) {
-            errorMessage = 'Authentication failed - check Twilio credentials';
-            statusCode = 401;
-        }
-        
-        return res.status(statusCode).json({ 
-            error: errorMessage, 
-            details: error.message,
-            code: error.code
+        return res.status(500).json({ 
+            error: 'Failed to send receipt', 
+            details: error.message 
         });
-    }
-};
     }
 };
