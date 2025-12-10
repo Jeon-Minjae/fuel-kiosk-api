@@ -4,12 +4,13 @@
   "description": "API for sending fuel receipts via WhatsApp",
   "main": "api/send-receipt.js",
   "scripts": {
-    "start": "node api/send-receipt.js"
+    "start": "node api/send-receipt.js",
+    "dev": "node api/send-receipt.js"
   },
   "dependencies": {
     "twilio": "^4.0.0"
   },
   "engines": {
-    "node": "18.x"
+    "node": "24.x"
   }
 }
