@@ -1,16 +1,7 @@
 {
   "name": "fuel-kiosk-api",
   "version": "1.0.0",
-  "description": "API for sending fuel receipts via WhatsApp",
-  "main": "api/send-receipt.js",
-  "scripts": {
-    "start": "node api/send-receipt.js",
-    "dev": "node api/send-receipt.js"
-  },
   "dependencies": {
-    "twilio": "^4.0.0"
-  },
-  "engines": {
-    "node": "24.x"
+    "twilio": "^4.20.0" 
   }
 }
