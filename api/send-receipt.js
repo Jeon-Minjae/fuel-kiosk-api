@@ -38,11 +38,31 @@ module.exports = async (req, res) => {
 
         // Note: 'to' is already in whatsapp:+60... format from the frontend.
 
+        // --- FIXED: Get current time in Malaysia timezone ---
+        const now = new Date();
+        
+        // Convert to Malaysia Time (MYT = UTC+8)
+        const malaysiaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+        
+        // Format date in DD/MM/YYYY format
+        const day = String(malaysiaTime.getDate()).padStart(2, '0');
+        const month = String(malaysiaTime.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const year = malaysiaTime.getFullYear();
+        const formattedDate = `${day}/${month}/${year}`;
+        
+        // Format time in 12-hour format with AM/PM
+        let hours = malaysiaTime.getHours();
+        const minutes = String(malaysiaTime.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // Convert 0 to 12
+        const formattedTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+
         // --- CHANGE 3: Construct the message body with new variables ---
         const messageBody = `⛽ *Fuel Receipt*\n---
 \n*Pump Station*: Petronas KL
-\n*Date*: ${new Date().toLocaleDateString('en-MY')}
-\n*Time*: ${new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}
+\n*Date*: ${formattedDate}
+\n*Time*: ${formattedTime}
 \n*Fuel Type*: ${fuelType}
 \n*Total Paid*: *RM ${amount}*
 \n*Pump Assigned*: ${pumpNumber}
