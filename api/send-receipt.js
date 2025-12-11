@@ -58,14 +58,13 @@ module.exports = async (req, res) => {
         hours = hours ? hours : 12; // Convert 0 to 12
         const formattedTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
 
-        // --- CHANGE 3: Construct the message body with new variables ---
+        // --- CHANGE 3: Construct the message body with new variables (Pump Assigned removed) ---
         const messageBody = `⛽ *Fuel Receipt*\n---
 \n*Pump Station*: Petronas KL
 \n*Date*: ${formattedDate}
 \n*Time*: ${formattedTime}
 \n*Fuel Type*: ${fuelType}
 \n*Total Paid*: *RM ${amount}*
-\n*Pump Assigned*: ${pumpNumber}
 \n---
 \n_Thank you for your purchase!_`;
 
